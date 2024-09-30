@@ -1,0 +1,10 @@
+streamlit
+sqlalchemy
+psycopg2-binary
+openai
+python-dotenv
+pydantic
+fastapi
+uvicorn
+python-multipart
+office365-rest-python-client
