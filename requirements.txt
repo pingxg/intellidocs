@@ -8,3 +8,5 @@ fastapi
 uvicorn
 python-multipart
 office365-rest-python-client
+alembic
+psycopg2
