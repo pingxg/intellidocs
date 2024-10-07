@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import streamlit as st
 
 load_dotenv()
 
@@ -36,3 +37,18 @@ ST_SECRET_KEY = os.getenv('ST_SECRET_KEY', 'your-streamlit-secret-key')
 SHAREPOINT_SITE_URL = os.getenv('SHAREPOINT_SITE_URL', 'your-sharepoint-site-url')
 SHAREPOINT_USERNAME = os.getenv('SHAREPOINT_USERNAME', 'your-sharepoint-username')
 SHAREPOINT_PASSWORD = os.getenv('SHAREPOINT_PASSWORD', 'your-sharepoint-password')
+
+def config_page():
+    """
+    Configures the Streamlit application's page settings.
+
+    This function sets up the initial configuration for the Streamlit page, including
+    the page icon, layout, and sidebar state. It also loads and applies custom CSS
+    styles from an external file to ensure consistent styling across the application.
+    """
+    st.set_page_config(
+        page_icon="assets/logo.png",
+        layout="wide",
+        initial_sidebar_state="auto",
+    )
+    st.logo("assets/logo-sidebar.png")
