@@ -27,6 +27,7 @@ class User(Base):
     Attributes:
         - id: Primary key of the user (UUID).
         - username: Unique username for the user.
+        - email: Email address for the user.
         - password: Password for the user (hashed).
         - user_group_id: Foreign key referencing the user's group.
     """
@@ -34,6 +35,7 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     user_group_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('user_groups.id'))
 
