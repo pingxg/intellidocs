@@ -9,108 +9,64 @@ import pandas as pd
 from dotenv import load_dotenv
 import requests
 
+# Load environment variables from a .env file
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-client = OpenAI()
+class OpenAIClient:
+    def __init__(self, api_key):
+        """
+        Initializes the OpenAI client with the provided API key.
+        """
+        self.client = OpenAI(api_key=api_key)
 
-def extract_text_from_pdf(pdf_path):
-    text = ""
-    try:
-        with fitz.open(pdf_path) as pdf_document:
-            for page_num in range(len(pdf_document)):
-                page = pdf_document.load_page(page_num)
-                text += page.get_text("text")
-    except Exception as e:
-        print(f"Error reading PDF: {e}")
-    return text
+    def extract_data_with_langchain(self, text):
+        """
+        Sends a request to OpenAI API to extract data from text.
+        """
+        prompt = """
+        You are given the text of a machine installment payment invoice. Extract the following information as plain json, please remember to parse all the date information to the format of yyyy.mm.dd:
+        - Manufacturer
+        - Billing company
+        - Invoice numbers
+        - Contract numbers
+        - Device names (if any)
+        - Address related to the use of this device
+        - Contract term
+        - Current billing month
+        - Total contract term
+        - Net price every term
 
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
-
-def extract_data_from_image(image_base64):
-    prompt = """
-    You are given the image of a machine installment payment invoice. Extract the following information as plain json, and ensure to parse all date information into the format yyyy.mm.dd:
-    - Manufacturer
-    - Billing company
-    - Invoice numbers
-    - Contract numbers
-    - Device names (if any)
-    - Address related to the use of this device
-    - Contract term
-    - Current billing month
-    - Total contract term
-    - Net price every term
-
-    If there are multiple contract numbers in an invoice, the exported file can have an additional row.
-    If there are duplicates in the result, only keep one; if there is only one result, it does not need to be a list.
-    no need to output any additonal characters
-    all output in english
-    """
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {openai.api_key}",
-    }
-
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": prompt},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "What’s in this invoice image?"},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
-                    },
+        If there are multiple contract numbers in an invoice, the exported file can have an additional row.
+        If there are duplicates in the result, only keep one; if there is only one result, it does not need to be a list.
+        no need to output any additonal characters
+        all output in english
+        """
+        try:
+            completion = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": text},
                 ],
-            },
-        ],
-    }
+            )
+            return completion.choices[0].message
+        except Exception as e:
+            print(f"Error extracting data with Langchain: {e}")
+            return None
 
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions", headers=headers, json=payload
-    )
-    return response.json()
-
-def extract_data_with_langchain(text):
-    prompt = """
-    You are given the text of a machine installment payment invoice. Extract the following information as plain json, please remember to parse all the date information to the format of yyyy.mm.dd:
-    - Manufacturer
-    - Billing company
-    - Invoice numbers
-    - Contract numbers
-    - Device names (if any)
-    - Address related to the use of this device
-    - Contract term
-    - Current billing month
-    - Total contract term
-    - Net price every term
-
-    If there are multiple contract numbers in an invoice, the exported file can have an additional row.
-    If there are duplicates in the result, only keep one; if there is only one result, it does not need to be a list.
-    no need to output any additonal characters
-    all output in english
-    """
-    completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": text},
-        ],
-    )
-    return completion.choices[0].message
 
 def process_pdfs_in_folder(folder_path, output_file):
+    """
+    Processes all PDF files in a folder, extracts data, and saves it to an Excel file.
+    """
     data = []
     for filename in os.listdir(folder_path):
         if filename.endswith(".pdf"):
             file_path = os.path.join(folder_path, filename)
             print(f"Processing file: {file_path}")
 
+            # Extract text from PDF
             extracted_text = extract_text_from_pdf(file_path)
 
             if extracted_text.strip():
@@ -162,6 +118,8 @@ def process_pdfs_in_folder(folder_path, output_file):
         print("No data to save.")
 
 if __name__ == "__main__":
+    api_key = os.getenv("OPENAI_API_KEY")
+    openai_client = OpenAIClient(api_key)
     folder_path = "invoices"
     output_file = "output.xlsx"
     process_pdfs_in_folder(folder_path, output_file)

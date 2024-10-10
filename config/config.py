@@ -24,6 +24,10 @@ EMAIL_SUBJECT = os.getenv('EMAIL_SUBJECT', 'Critical Error in Streamlit App')
 # OpenAI API Configuration (for embeddings or generation tasks)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-openai-api-key')
 
+LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o-mini')
+EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'text-embedding-ada-002')
+
+
 # Logging Configuration
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG').upper()
 
