@@ -11,4 +11,5 @@ boto3
 PyPDF
 pgvector
 PyPDF2
+pymupdf
 streamlit_authenticator==0.1.5

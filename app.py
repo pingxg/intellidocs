@@ -1,8 +1,11 @@
 import streamlit as st
-
 import config.config as cfg
+from services.auth_service import handle_authentication, create_user
 
 cfg.config_page()
+
+# create_user("Pingxin Gao", "pingxin.gao@spartao.fi", "S")
+handle_authentication()
 
 pages = {
     "Document Management": [
