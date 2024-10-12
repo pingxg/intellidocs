@@ -6,10 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 # Import the models and base to use them for migrations
-from database.base import Base, engine  # Import Base and engine from your project
-
-# Import your models so Alembic can reference them
-from database.models import Document, Tag
+from database.models import Base  # Import Base and engine from your project
 
 load_dotenv()
 

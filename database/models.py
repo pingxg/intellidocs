@@ -2,9 +2,19 @@ import uuid
 from sqlalchemy import Column, String, ForeignKey, Table, Text, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from database.base import Base
 from pgvector.sqlalchemy import Vector
 from typing import Optional, List
+from datetime import datetime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
+import config.config as cfg
+
+# SQLAlchemy Base class for model inheritance
+Base = declarative_base()
+
+# Create a database engine using the DATABASE_URL from config.py
+engine = create_engine(cfg.DATABASE_URL, echo=True, pool_pre_ping=True, pool_recycle=3600, future=True, connect_args={"connect_timeout": 10})
+
 
 # Many-to-Many association table between documents and tags
 document_tags = Table(
@@ -14,11 +24,12 @@ document_tags = Table(
 )
 
 # Many-to-Many association table between user groups and tags
-usergroup_tags = Table(
-    'usergroup_tags', Base.metadata,
-    Column('usergroup_id', UUID(as_uuid=True), ForeignKey('user_groups.id'), primary_key=True),
+user_group_tags = Table(
+    'user_group_tags', Base.metadata,
+    Column('user_group_id', UUID(as_uuid=True), ForeignKey('user_groups.id'), primary_key=True),
     Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id'), primary_key=True)
 )
+
 
 class User(Base):
     """
@@ -37,12 +48,21 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
-    user_group_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('user_groups.id'))
+    user_group_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('user_groups.id'), nullable=False)
 
     user_group: Mapped['UserGroup'] = relationship('UserGroup', back_populates='users')
 
+    # Timestamps in UTC
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username})>"
+
 
 class UserGroup(Base):
     """
@@ -51,18 +71,30 @@ class UserGroup(Base):
     Attributes:
         - id: Primary key of the user group.
         - group_name: Name of the user group.
-        - tags: Many-to-many relationship with tags.
+        - tags: One-to-many relationship with tags.
     """
     __tablename__ = 'user_groups'
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     group_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
-    # Relationship to users
+    # Relationship to users (one-to-many)
     users: Mapped[List[User]] = relationship('User', back_populates='user_group')
 
     # Relationship to tags (many-to-many)
-    tags: Mapped[List['Tag']] = relationship('Tag', secondary=usergroup_tags, back_populates='user_groups')
+    tags: Mapped[List['Tag']] = relationship('Tag', secondary=user_group_tags, back_populates='user_groups')
+
+    # Timestamps in UTC
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    def can_be_deleted(self) -> bool:
+        """Check if the user group can be deleted (i.e., no users are associated with it)."""
+        return len(self.users) == 0
 
     def __repr__(self) -> str:
         return f"<UserGroup(id={self.id}, group_name={self.group_name})>"
@@ -89,15 +121,19 @@ class Document(Base):
     description_vector: Mapped[Vector] = mapped_column(Vector(1536))
     document_metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     
-    # Timestamps
-    created_at: Mapped[Optional[str]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[Optional[str]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    # Timestamps in UTC
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     # Relationship to tags (many-to-many)
     tags: Mapped[List['Tag']] = relationship('Tag', secondary=document_tags, back_populates='documents')
 
     def __repr__(self) -> str:
-        return f"<Document(id={self.id}, file_name={self.file_name}, document_type={self.document_type})>"
+        return f"<Document(id={self.id}, file_name={self.file_name})>"
 
 class DocumentContent(Base):
     """
@@ -116,9 +152,13 @@ class DocumentContent(Base):
     raw_content: Mapped[str] = mapped_column(Text, nullable=False)
     vector: Mapped[Vector] = mapped_column(Vector(1536))
     
-    # Timestamps
-    created_at: Mapped[Optional[str]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[Optional[str]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    # Timestamps in UTC
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     def __repr__(self) -> str:
         return f"<DocumentContent(id={self.id}, document_id={self.document_id})>"
@@ -130,22 +170,30 @@ class Tag(Base):
     Attributes:
         - id: Primary key of the tag.
         - tag_name: Name of the tag (e.g., 'contract', 'rental-related').
+        - user_group_id: Foreign key referencing the user group.
         - documents: Many-to-many relationship with documents.
     """
     __tablename__ = 'tags'
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tag_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    
-    # Timestamps
-    created_at: Mapped[Optional[str]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[Optional[str]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Timestamps in UTC
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     # Relationship to documents (many-to-many)
     documents: Mapped[List[Document]] = relationship('Document', secondary=document_tags, back_populates='tags')
 
     # Relationship to user groups (many-to-many)
-    user_groups: Mapped[List[UserGroup]] = relationship('UserGroup', secondary=usergroup_tags, back_populates='tags')
+    user_groups: Mapped[List[UserGroup]] = relationship('UserGroup', secondary=user_group_tags, back_populates='tags')
 
     def __repr__(self) -> str:
         return f"<Tag(id={self.id}, tag_name={self.tag_name})>"
+
+# Create all tables in the database
+# Base.metadata.create_all(engine)

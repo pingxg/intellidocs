@@ -33,7 +33,7 @@ def get_logger(name: str) -> logging.Logger:
         logger.addHandler(console_handler)
 
         # Email handler for critical errors
-        if LOG_LEVEL == 'DEBUG' or LOG_LEVEL == 'INFO':
+        if LOG_LEVEL == 'ERROR' or LOG_LEVEL == 'CRITICAL':
             email_handler = SMTPHandler(
                 mailhost=(SMTP_SERVER, SMTP_PORT),
                 fromaddr=EMAIL_FROM,
