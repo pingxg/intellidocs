@@ -19,15 +19,15 @@ engine = create_engine(cfg.DATABASE_URL, echo=True, pool_pre_ping=True, pool_rec
 # Many-to-Many association table between documents and tags
 document_tags = Table(
     'document_tags', Base.metadata,
-    Column('document_id', UUID(as_uuid=True), ForeignKey('documents.id'), primary_key=True),
-    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id'), primary_key=True)
+    Column('document_id', UUID(as_uuid=True), ForeignKey('documents.id', ondelete='CASCADE'), primary_key=True),
+    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
 )
 
 # Many-to-Many association table between user groups and tags
 user_group_tags = Table(
     'user_group_tags', Base.metadata,
-    Column('user_group_id', UUID(as_uuid=True), ForeignKey('user_groups.id'), primary_key=True),
-    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id'), primary_key=True)
+    Column('user_group_id', UUID(as_uuid=True), ForeignKey('user_groups.id', ondelete='CASCADE'), primary_key=True),
+    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
 )
 
 
