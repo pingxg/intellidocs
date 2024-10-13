@@ -5,18 +5,26 @@ from database.session import get_db
 
 class TagService:
     @staticmethod
-    def create_tag(tag_name: str) -> Tag:
+    def create_tag(tag_name: str, notify: bool = False, notification_days_before_expiry: int = 30, notification_frequency: int = 7) -> Tag:
         """
         Create a new tag in the database.
 
         Args:
             tag_name (str): The name of the tag to be created.
+            notify (bool): Whether notifications are needed for this tag.
+            notification_days_before_expiry (int): Days before document expiry to start notifications.
+            notification_frequency (int): Frequency of notifications in days.
 
         Returns:
             Tag: The newly created Tag object.
         """
         with get_db() as db:
-            new_tag = Tag(tag_name=tag_name)
+            new_tag = Tag(
+                tag_name=tag_name,
+                notify=notify,
+                notification_days_before_expiry=notification_days_before_expiry,
+                notification_frequency=notification_frequency
+            )
             db.add(new_tag)
             db.commit()
             db.refresh(new_tag)
@@ -80,13 +88,16 @@ class TagService:
         return len(tag.documents) == 0
 
     @staticmethod
-    def update_tag(tag_id: UUID, new_name: str) -> Optional[Tag]:
+    def update_tag(tag_id: UUID, new_name: str, notify: Optional[bool] = None, notification_days_before_expiry: Optional[int] = None, notification_frequency: Optional[int] = None) -> Optional[Tag]:
         """
-        Update the name and user group of an existing tag.
+        Update the name and notification settings of an existing tag.
 
         Args:
             tag_id (UUID): The ID of the tag to update.
             new_name (str): The new name for the tag.
+            notify (Optional[bool]): Whether notifications are needed for this tag.
+            notification_days_before_expiry (Optional[int]): Days before document expiry to start notifications.
+            notification_frequency (Optional[int]): Frequency of notifications in days.
 
         Returns:
             Optional[Tag]: The updated Tag object if successful, otherwise None.
@@ -95,6 +106,12 @@ class TagService:
             tag = db.query(Tag).filter(Tag.id == tag_id).first()
             if tag:
                 tag.tag_name = new_name
+                if notify is not None:
+                    tag.notify = notify
+                if notification_days_before_expiry is not None:
+                    tag.notification_days_before_expiry = notification_days_before_expiry
+                if notification_frequency is not None:
+                    tag.notification_frequency = notification_frequency
                 db.commit()
                 db.refresh(tag)
                 return tag

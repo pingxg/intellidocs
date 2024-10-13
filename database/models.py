@@ -1,12 +1,12 @@
 import uuid
+from typing import Optional, List
+from datetime import datetime
 from sqlalchemy import Column, String, ForeignKey, Table, Text, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from pgvector.sqlalchemy import Vector
-from typing import Optional, List
-from datetime import datetime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
+from pgvector.sqlalchemy import Vector
 import config.config as cfg
 
 # SQLAlchemy Base class for model inheritance
@@ -14,7 +14,6 @@ Base = declarative_base()
 
 # Create a database engine using the DATABASE_URL from config.py
 engine = create_engine(cfg.DATABASE_URL, echo=True, pool_pre_ping=True, pool_recycle=3600, future=True, connect_args={"connect_timeout": 10})
-
 
 # Many-to-Many association table between documents and tags
 document_tags = Table(
@@ -29,7 +28,6 @@ user_group_tags = Table(
     Column('user_group_id', UUID(as_uuid=True), ForeignKey('user_groups.id', ondelete='CASCADE'), primary_key=True),
     Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
 )
-
 
 class User(Base):
     """
@@ -172,11 +170,19 @@ class Tag(Base):
         - tag_name: Name of the tag (e.g., 'contract', 'rental-related').
         - user_group_id: Foreign key referencing the user group.
         - documents: Many-to-many relationship with documents.
+        - notify: Boolean indicating if notifications are needed.
+        - notification_days_before_expiry: Days before document expiry to start notifications.
+        - notification_frequency: Frequency of notifications in days.
     """
     __tablename__ = 'tags'
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tag_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+    # New columns for notification settings
+    notify: Mapped[bool] = mapped_column(default=False, nullable=False)
+    notification_days_before_expiry: Mapped[int] = mapped_column(default=30, nullable=False)
+    notification_frequency: Mapped[int] = mapped_column(default=7, nullable=False)
 
     # Timestamps in UTC
     created_at: Mapped[datetime] = mapped_column(

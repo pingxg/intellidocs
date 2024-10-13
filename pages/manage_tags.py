@@ -12,6 +12,9 @@ with tab1:
     st.subheader("Add New Tag")
     with st.form(key='add_tag_form', clear_on_submit=True, border=False):
         tag_name = st.text_input("Tag Name", key='add_tag_name').lower().replace(" ", "-")
+        notify = st.checkbox("Notify", key='add_notify', value=False)
+        notification_days_before_expiry = st.number_input("Days Before Expiry", min_value=0, value=30, key='add_notification_days')
+        notification_frequency = st.number_input("Notification Frequency", min_value=0, value=7, key='add_notification_frequency')
         submit_button = st.form_submit_button(label='Add Tag')
         if submit_button:
             if not tag_name:
@@ -19,7 +22,7 @@ with tab1:
                 logger.warning("Attempted to add tag with missing name.")
             else:
                 try:
-                    TagService.create_tag(tag_name)
+                    TagService.create_tag(tag_name, notify, notification_days_before_expiry, notification_frequency)
                     st.toast("Tag added successfully!", icon="✅")
                     logger.info(f"Tag '{tag_name}' added successfully.")
                     st.rerun()
@@ -32,9 +35,18 @@ with tab2:
     tags = TagService.get_all_tags()
     tag_options = {tag.tag_name.lower().replace(" ", "-"): tag.id for tag in tags}
     
+    selected_tag_name = st.selectbox("Select Tag", options=list(tag_options.keys()), index=None, key='update_tag_selector')
+    
+    # Fetch the selected tag details
+    if selected_tag_name:
+        selected_tag_id = tag_options[selected_tag_name]
+        selected_tag = TagService.get_tag_by_id(selected_tag_id)
+
     with st.form(key='update_tag_form', clear_on_submit=True, border=False):
-        selected_tag_name = st.selectbox("Select Tag", options=list(tag_options.keys()), index=None, key='update_tag_selector')
-        tag_name = st.text_input("New Tag Name", key='update_tag_name').lower().replace(" ", "-")
+        tag_name = st.text_input("New Tag Name", value=selected_tag.tag_name if selected_tag_name else "", key='update_tag_name').lower().replace(" ", "-")
+        notify = st.checkbox("Notify", value=selected_tag.notify if selected_tag_name else False, key='update_notify')
+        notification_days_before_expiry = st.number_input("Days Before Expiry", min_value=0, value=selected_tag.notification_days_before_expiry if selected_tag_name else 0, key='update_notification_days')
+        notification_frequency = st.number_input("Notification Frequency", min_value=0, value=selected_tag.notification_frequency if selected_tag_name else 0, key='update_notification_frequency')
         submit_button = st.form_submit_button(label='Update Tag')
         if submit_button:
             if not tag_name:
@@ -42,9 +54,7 @@ with tab2:
                 logger.warning("Attempted to update tag with no name provided.")
             else:
                 try:
-                    selected_tag_id = tag_options[selected_tag_name]
-                    TagService.update_tag(selected_tag_id, tag_name)
-
+                    TagService.update_tag(selected_tag_id, tag_name, notify, notification_days_before_expiry, notification_frequency)
                     st.toast("Tag updated successfully!", icon="✅")
                     logger.info(f"Tag '{selected_tag_name}' updated successfully.")
                     st.rerun()
