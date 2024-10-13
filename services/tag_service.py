@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
-from database.models import Tag, Document
+from database.models import Tag
 from database.session import get_db
 
 class TagService:

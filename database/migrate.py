@@ -19,7 +19,7 @@ def create_db_if_not_exists():
             logger.info(f'Database {database} already exists.')
     except exc.OperationalError:
         logger.info(f'Database {database} does not exist. Creating now.')
-        engine = create_engine(db_postgres)  # using postgres db to connect
+        engine = create_engine(db_postgres)
         try:
             # Attempt to connect to the database
             with engine.connect() as conn:

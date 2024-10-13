@@ -22,7 +22,7 @@ with tab1:
                     TagService.create_tag(tag_name)
                     st.toast("Tag added successfully!", icon="✅")
                     logger.info(f"Tag '{tag_name}' added successfully.")
-                    st.rerun()  # Refresh the app after adding a tag
+                    st.rerun()
                 except Exception as e:
                     st.toast(f"Failed to add tag '{tag_name}'. Please check the details and try again. Error: {e}", icon="🚨")
                     logger.error(f"Error adding tag '{tag_name}': {e}")
@@ -47,7 +47,7 @@ with tab2:
 
                     st.toast("Tag updated successfully!", icon="✅")
                     logger.info(f"Tag '{selected_tag_name}' updated successfully.")
-                    st.rerun()  # Refresh the app after updating a tag
+                    st.rerun()
                 except Exception as e:
                     st.toast(f"Failed to update tag '{selected_tag_name}'. Please ensure the details are correct and try again. Error: {e}", icon="🚨")
                     logger.error(f"Error updating tag '{selected_tag_name}': {e}")
@@ -69,8 +69,8 @@ with tab3:
                     if TagService.delete_tag(selected_tag_id):
                         st.toast("Tag deleted successfully!", icon="✅")
                         logger.info(f"Tag '{selected_tag_name}' deleted successfully.")
-                        st.session_state.pop('delete_tag_selector', None)  # Reset the selection
-                        st.rerun()  # Refresh the app after deleting a tag
+                        st.session_state.pop('delete_tag_selector', None)
+                        st.rerun()
                     else:
                         st.toast(f"Cannot delete tag '{selected_tag_name}' because it is associated with documents.", icon="🚨")
                         logger.warning(f"Attempted to delete tag '{selected_tag_name}' that cannot be deleted.")
@@ -80,7 +80,7 @@ with tab3:
             if st.button("Cancel"):
                 st.toast("Tag deletion cancelled.", icon="ℹ️")
                 logger.info(f"Tag deletion for '{selected_tag_name}' was cancelled.")
-                st.session_state.pop('delete_tag_selector', None)  # Reset the selection
+                st.session_state.pop('delete_tag_selector', None)
                 st.rerun()
 
     with st.form(key='delete_tag_form', clear_on_submit=True, border=False):
