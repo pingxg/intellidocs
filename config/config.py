@@ -51,7 +51,7 @@ def config_page():
     styles from an external file to ensure consistent styling across the application.
     """
     st.set_page_config(
-        page_icon="assets/logo.png",
+        page_icon="assets/icon.png",
         layout="wide",
         initial_sidebar_state="auto",
     )

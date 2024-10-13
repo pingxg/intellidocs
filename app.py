@@ -20,9 +20,9 @@ pages = {
         st.Page("pages/manage_tags.py", title="Tag Management", icon="🏷️"),
     ],
 
-    "Chat & Support": [
-        st.Page("pages/chatbot.py", title="Chat with File", icon="💬"),
-    ],
+    # "Chat & Support": [
+    #     st.Page("pages/chatbot.py", title="Chat with File", icon="💬"),
+    # ],
 }
 
 pg = st.navigation(pages)

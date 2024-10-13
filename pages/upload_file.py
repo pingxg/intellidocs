@@ -1,48 +1,88 @@
 import streamlit as st
-from services.file_service import extract_text_from_pdf
+from utils.file_utils import extract_text_from_pdf
 from utils.logger import get_logger
-from services.sharepoint_service import upload_to_sharepoint
-# from services.aws_service import upload_to_s3
-from typing import Dict, Optional
+from services.document_service import DocumentService
+from services.openai_service import OpenAIClient
+from services.tag_service import TagService
+from datetime import datetime
+from utils.file_utils import generate_hash_from_bytes
+import json
 
-logger = get_logger(__name__)  # Initialize the logger
+logger = get_logger(__name__)
 
-st.title("IntelliDocs")
+st.title("IntelliDocs - Upload PDF")
 
-uploaded_file: Optional[st.file_uploader] = st.file_uploader("Choose a file")
+uploaded_file = st.file_uploader("Choose a PDF file", type=['pdf'], accept_multiple_files=False)
 if uploaded_file is not None:
     try:
         logger.info("File uploaded: %s", uploaded_file.name)
-        # Assuming process_document is similar to extract_text_from_pdf
-        metadata: Dict[str, str] = extract_text_from_pdf(uploaded_file)
-        st.write("Extracted Metadata:", metadata)
-        logger.info("Metadata extracted successfully.")
         
-        try:
-            # Assuming store_metadata is similar to a function that stores metadata in a database
-            # You might need to implement this function based on your database setup
-            # store_metadata(metadata)
-            st.toast("Metadata stored successfully!", icon="✅")
-            logger.info("Metadata stored successfully.")
-        except Exception as e:
-            st.toast(f"Failed to store metadata: {e}", icon="🚨")
-            logger.error("Failed to store metadata: %s", e)
+        # Check if the document already exists
+        content_hash = generate_hash_from_bytes(uploaded_file)
+
+        existing_document = DocumentService.document_exists_by_hash(content_hash)
+        if existing_document is True:
+            st.toast(f"This document already exists in the database.", icon="🔍")
+            logger.info(f"Document {uploaded_file.name} already exists in the database.")
+            st.stop()
+
+        extracted_text = extract_text_from_pdf(uploaded_file)
+        logger.info("Text extracted successfully.")
+        parsed_data = OpenAIClient().extract_document_metadata(input_data=extracted_text)
+        parsed_data = json.loads(parsed_data)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.expander("Extracted Text", expanded=False).code(extracted_text, language="text")
+
+        with col2:
+            st.expander("Parsed Data", expanded=False).code(json.dumps(parsed_data, indent=2), language="json")
+
+        file_name = parsed_data.get("filename", "")
+        parsed_data.pop("filename", None)
+        start_date = datetime.strptime(parsed_data.get("start_date", ""), "%Y.%m.%d") if parsed_data.get("start_date", "") else None
+        parsed_data.pop("start_date", None)
+        end_date = datetime.strptime(parsed_data.get("end_date", ""), "%Y.%m.%d") if parsed_data.get("end_date", "") else None
+        parsed_data.pop("end_date", None)
+        description = parsed_data.get("description", "")
+        parsed_data.pop("description", None)
+
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            file_name = st.text_input("File Name", value=file_name)
+            start_date = st.date_input("Start Date", value=start_date)
+            description = st.text_area("Description", value=description, height=250)
+        with col2:
+            file_extension = st.text_input("File Extension", value=uploaded_file.type.split('/')[1])
+            end_date = st.date_input("End Date", value=end_date)
+            document_metadata = st.text_area("Document Metadata", value=json.dumps(parsed_data, indent=2), height=250)
+
+
+        # Fetch tags for multiselect
+        all_tags = TagService.get_all_tags()
+        tag_options = {tag.tag_name: tag.id for tag in all_tags}
+        selected_tags = st.multiselect("Tags", options=list(tag_options.keys()), default=parsed_data.get("tags", []))
         
-        try:
-            upload_to_sharepoint(uploaded_file, uploaded_file.name)
-            st.toast("File uploaded to SharePoint successfully!", icon="✅")
-            logger.info("File uploaded to SharePoint successfully.")
-        except Exception as e:
-            st.toast(f"Failed to upload to SharePoint: {e}", icon="🚨")
-            logger.error("Failed to upload to SharePoint: %s", e)
-        
-        try:
-            # upload_to_s3(uploaded_file, uploaded_file.name)
-            st.toast("File uploaded to S3 successfully!", icon="✅")
-            logger.info("File uploaded to S3 successfully.")
-        except Exception as e:
-            st.toast(f"Failed to upload to S3: {e}", icon="🚨")
-            logger.error("Failed to upload to S3: %s", e)
+        if st.button("Save Document"):
+            try:
+                # Save the document using the DocumentService
+                DocumentService.create_document(
+                    file_name=file_name,
+                    start_date=start_date,
+                    end_date=end_date,
+                    description=description,
+                    file_extension=file_extension,
+                    document_metadata=document_metadata,
+                    tag_ids=[tag_options[tag] for tag in selected_tags]
+                )
+                st.toast("Document saved successfully!", icon="✅")
+                logger.info("Document saved successfully.")
+            except Exception as e:
+                st.toast(f"Failed to save document: {e}", icon="🚨")
+                logger.error("Failed to save document: %s", e)
     
     except Exception as e:
         st.toast(f"Failed to process document: {e}", icon="🚨")

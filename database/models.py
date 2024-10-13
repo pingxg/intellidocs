@@ -104,6 +104,8 @@ class Document(Base):
     Attributes:
         - id: Primary key of the document (UUID).
         - file_name: Name of the file uploaded.
+        - start_date: Start date of the document.
+        - end_date: End date of the document.
         - description: Description of the document.
         - description_vector: Vector representation of the document description.
         - file_path: Path of the file uploaded.
@@ -113,11 +115,14 @@ class Document(Base):
     __tablename__ = 'documents'
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    start_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    end_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     description_vector: Mapped[Vector] = mapped_column(Vector(1536))
+    file_path: Mapped[str] = mapped_column(String(255), nullable=False)
     document_metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     
     # Timestamps in UTC
     created_at: Mapped[datetime] = mapped_column(
@@ -149,7 +154,7 @@ class DocumentContent(Base):
     document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('documents.id'), nullable=False)
     raw_content: Mapped[str] = mapped_column(Text, nullable=False)
     vector: Mapped[Vector] = mapped_column(Vector(1536))
-    
+    file_extension: Mapped[str] = mapped_column(String(15), nullable=False)
     # Timestamps in UTC
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
